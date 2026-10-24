@@ -1,0 +1,153 @@
+:root {
+  --bg: #101216;
+  --panel: #171a20;
+  --panel-2: #1d2129;
+  --line: #2a2f3a;
+  --text: #e8eaf0;
+  --muted: #8b91a0;
+  --accent: #7c9cff;
+  --accent-2: #9fffcf;
+  --danger: #ff7c7c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.brand { font-weight: 700; letter-spacing: 0.02em; }
+.brand span { color: var(--accent); font-weight: 400; margin-left: 0.3rem; }
+
+.title-input {
+  flex: 1;
+  max-width: 22rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  padding: 0.4rem 0.6rem;
+}
+.title-input:hover, .title-input:focus { border-color: var(--line); outline: none; background: var(--panel-2); }
+
+.topbar-actions, .pane-head { display: flex; align-items: center; gap: 0.5rem; }
+.topbar-actions { margin-left: auto; }
+
+button {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.42rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #0d1017; font-weight: 600; }
+button.ghost { background: transparent; }
+button.wide { width: 100%; margin-top: 0.8rem; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+select, input {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.42rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.2rem;
+  padding: 1.2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pane-head {
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.pane-head h2 { font-size: 1rem; margin: 0; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.section-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+.section-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.section-index { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.6rem; }
+.section-voice { max-width: 11rem; }
+.section-duration { color: var(--muted); font-size: 0.85rem; margin-left: auto; }
+.section-delete { color: var(--muted); border: none; background: none; }
+.section-delete:hover { color: var(--danger); }
+
+.section-text {
+  width: 100%;
+  resize: vertical;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem;
+  font: inherit;
+}
+.section-text:focus { outline: none; border-color: var(--accent); }
+
+.section-preview {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 0.35rem;
+  display: none;
+}
+.section-preview.has { display: block; }
+.section-preview b { color: var(--accent-2); font-weight: 600; }
+
+.section-audio { width: 100%; height: 2.2rem; margin-top: 0.4rem; }
+.section-audio:not([src]) { display: none; }
+
+.settings-pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+  align-self: start;
+  position: sticky;
+  top: 1rem;
+}
+
+.field { display: block; margin-bottom: 0.9rem; }
+.field span { display: block; color: var(--muted); font-size: 0.8rem; margin-bottom: 0.25rem; }
+.field select { width: 100%; }
+
+.engine-note { color: var(--muted); font-size: 0.8rem; margin: -0.4rem 0 0.9rem; }
+
+.param { margin-bottom: 0.9rem; }
+.param-head { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem; }
+.param-value { color: var(--accent); font-variant-numeric: tabular-nums; }
+.param input[type="range"] { width: 100%; accent-color: var(--accent); }
+.param-toggle { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; }
+
+.player-slot audio { width: 100%; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .settings-pane { position: static; }
+}

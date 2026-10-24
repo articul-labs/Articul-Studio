@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Articul Studio</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Articul<span>Studio</span></div>
+    <input id="project-title" class="title-input" aria-label="Tên dự án" />
+    <div class="topbar-actions">
+      <select id="project-picker" aria-label="Chọn dự án"></select>
+      <button id="btn-new" class="ghost">+ Dự án mới</button>
+      <button id="btn-export" class="primary">⬇ Xuất WAV</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="sections-pane">
+      <div class="pane-head">
+        <h2>Kịch bản</h2>
+        <div>
+          <button id="btn-add-section" class="ghost">+ Đoạn</button>
+          <button id="btn-play-all" class="ghost">▶ Phát tất cả</button>
+        </div>
+      </div>
+      <div id="sections" class="sections"></div>
+    </section>
+
+    <aside class="settings-pane">
+      <div class="pane-head"><h2>Giọng đọc &amp; tham số</h2></div>
+      <label class="field">
+        <span>Engine</span>
+        <select id="engine-picker"></select>
+      </label>
+      <p id="engine-note" class="engine-note"></p>
+      <label class="field">
+        <span>Giọng</span>
+        <select id="voice-picker"></select>
+      </label>
+      <div id="params"></div>
+      <button id="btn-apply-params" class="wide ghost">Đặt lại mặc định</button>
+      <div class="pane-head" style="margin-top:1.5rem"><h2>Bản đọc thử</h2></div>
+      <div id="player-slot"></div>
+    </aside>
+  </main>
+
+  <template id="section-tpl">
+    <article class="section-card">
+      <div class="section-head">
+        <span class="section-index"></span>
+        <select class="section-voice" aria-label="Giọng của đoạn"></select>
+        <button class="section-generate">⚡ Đọc</button>
+        <button class="section-play">▶</button>
+        <span class="section-duration"></span>
+        <button class="section-delete" title="Xóa đoạn">✕</button>
+      </div>
+      <textarea class="section-text" rows="4" placeholder="Nhập văn bản tiếng Việt…"></textarea>
+      <div class="section-preview"></div>
+      <audio class="section-audio" preload="auto"></audio>
+    </article>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -19,6 +19,15 @@ from .base import ParamSpec, SynthesisResult, TtsEngine
 ARTICUL_MODEL_DIR_ENV = "ARTICUL_MODEL_DIR"
 
 
+def _articul_normalize(text: str) -> str:
+    """Delegate to articul's own text frontend when importable."""
+    try:
+        from articul.frontend import normalize as articul_normalize
+    except ImportError:
+        return text
+    return articul_normalize(text)
+
+
 def model_dir() -> Path | None:
     raw = os.environ.get(ARTICUL_MODEL_DIR_ENV, "").strip()
     if not raw:
@@ -48,8 +57,16 @@ class ArticulEngine(TtsEngine):
         """Load exported Articul weights from model_dir()."""
         raise NotImplementedError("Implement when the Articul export format is decided")
 
+    def normalize_text(self, text: str) -> str:
+        return _articul_normalize(text)
+
     def _synthesize_with_model(self, text: str, voice_id: str, settings: dict[str, float]):
-        """Run the model; return (samples: np.ndarray float32, sample_rate: int)."""
+        """Run the model; return (samples: np.ndarray float32, sample_rate: int).
+
+        Expected integration path (see articul src/articul/frontend and
+        src/articul/eval/synthesis.py Synthesizer protocol):
+        normalize -> phonemize(dialect, lexicon) -> to_input_ids -> model.
+        """
         raise NotImplementedError("Implement when the Articul inference API is decided")
 
     def ensure_loaded(self) -> None:

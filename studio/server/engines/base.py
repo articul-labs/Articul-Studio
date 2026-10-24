@@ -69,6 +69,17 @@ class TtsEngine(abc.ABC):
     def default_settings(self) -> dict[str, float]:
         return {p.key: p.default for p in self.params}
 
+    def normalize_text(self, text: str) -> str:
+        """Rewrite written text into speakable words (numbers, currency, times).
+
+        Engines that ship their own text frontend override this — e.g. the
+        Articul engine delegates to articul.frontend.normalize so the studio
+        and the model agree on exactly what gets spoken.
+        """
+        from ..normalize_vi import normalize
+
+        return normalize(text)
+
     def normalize_settings(self, settings: dict[str, float] | None) -> dict[str, float]:
         """Fill defaults, clamp unknown/out-of-range values to the schema.
 

@@ -19,7 +19,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engines.registry import get_engine, get_engines
-from .normalize_vi import normalize
 from .project_store import Project, ProjectStore, Section
 
 app = FastAPI(title="Articul Studio", version="0.1.0")
@@ -69,9 +68,12 @@ def list_engines() -> list[dict]:
 
 
 @app.get("/api/normalize")
-def preview_normalize(text: str) -> dict:
+def preview_normalize(text: str, engine_id: str = "placeholder") -> dict:
     """Show what the engine will actually receive — useful while tuning Vietnamese text."""
-    return {"normalized": normalize(text)}
+    engine = get_engine(engine_id)
+    if engine is None:
+        raise HTTPException(404, "unknown engine")
+    return {"normalized": engine.normalize_text(text)}
 
 
 @app.get("/api/projects")
@@ -163,7 +165,7 @@ def synthesize_section(project_id: str, section_id: str) -> Response:
         raise HTTPException(400, "section text is empty")
 
     engine, voice_id, settings = _resolve_settings(project, section)
-    result = engine.synthesize(normalize(section.text), voice_id, settings)
+    result = engine.synthesize(engine.normalize_text(section.text), voice_id, settings)
     return _wav_response(result)
 
 
@@ -181,7 +183,7 @@ def export_project(project_id: str) -> Response:
     sample_rate = None
     for section in spoken:
         engine, voice_id, settings = _resolve_settings(project, section)
-        result = engine.synthesize(normalize(section.text), voice_id, settings)
+        result = engine.synthesize(engine.normalize_text(section.text), voice_id, settings)
         audio, sr = sf.read(io.BytesIO(result.wav_bytes), dtype="float32")
         sample_rate = sample_rate or sr
         pieces.append(audio)

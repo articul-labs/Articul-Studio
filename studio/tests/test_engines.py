@@ -55,3 +55,23 @@ def test_syllable_counting_handles_diacritics():
     assert count_syllables("xin chào") == 2
     assert count_syllables("Việt Nam") == 2
     assert count_syllables("quả") == 1
+
+def test_engines_own_their_text_frontend():
+    # Placeholder uses the studio normalizer; engines with their own frontend
+    # (Articul) override normalize_text.
+    engine = PlaceholderEngine()
+    assert engine.normalize_text("7:30") == "bảy giờ ba mươi"
+
+
+def test_articul_normalizer_falls_back_to_identity_without_import(monkeypatch):
+    import sys
+
+    from server.engines import articul as articul_module
+
+    monkeypatch.setenv("ARTICUL_MODEL_DIR", "/tmp")
+    saved = sys.modules.pop("articul.frontend", None)
+    monkeypatch.setitem(sys.modules, "articul", None)  # forces ImportError inside
+    engine = articul_module.ArticulEngine()
+    assert engine.normalize_text("50%") == "50%"
+    if saved is not None:
+        sys.modules["articul.frontend"] = saved
