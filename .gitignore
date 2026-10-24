@@ -1,4 +1,6 @@
 **/__pycache__/
 **/.DS_Store
 **/._*
-**/.ipynb_checkpoints/
+**/.ipynb_checkpoints/studio/.venv/
+studio/data/
+studio/__pycache__/
