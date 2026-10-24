@@ -14,7 +14,6 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 

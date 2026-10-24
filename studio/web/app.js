@@ -115,7 +115,7 @@ function fillVoiceOptions(select, includeInherit) {
   if (includeInherit) {
     const inherit = document.createElement("option");
     inherit.value = "";
-    inherit.textContent = `— theo dự án (${engine.voices.find((v) => v.id === state.project.voice_id)?.name ?? "?"})`;
+    inherit.textContent = `theo dự án: ${engine.voices.find((v) => v.id === state.project.voice_id)?.name ?? "?"}`;
     select.appendChild(inherit);
   }
   for (const voice of engine.voices) {
@@ -197,13 +197,12 @@ function renderAll() {
 /* ---------- data actions ---------- */
 
 async function loadEngines() {
-  state.engines = (await api("/api/engines")).json();
-  await Promise.resolve();
+  state.engines = await (await api("/api/engines")).json();
   state.enginesById = new Map(state.engines.map((e) => [e.id, e]));
 }
 
 async function loadProjects() {
-  state.projects = (await api("/api/projects")).json();
+  state.projects = await (await api("/api/projects")).json();
 }
 
 async function loadProject(id) {
