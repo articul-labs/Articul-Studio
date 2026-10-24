@@ -15,6 +15,7 @@ import numpy as np
 import soundfile as sf
 
 from ._compat import (
+    CWD_LOCK,
     ProcessingUnavailable,
     clearvoice_available,
     ensure_repo_paths,
@@ -54,8 +55,11 @@ def enhance(wav_path: PathLike, model: str = DEFAULT_MODEL) -> Path:
     # ClearVoice tensor-to-tensor mode: float32 [batch, length] in,
     # [batch, length] out (per demo_Numpy2Numpy.py).
     batch = np.reshape(mono, [1, mono.shape[0]]).astype(np.float32)
-    voice = clearvoice.ClearVoice(task="speech_enhancement", model_names=[model])
-    enhanced = voice(batch, False)
+    # ClearVoice resolves checkpoint paths relative to the CWD; take the
+    # shared lock so a concurrent QC chdir can't move the ground under it.
+    with CWD_LOCK:
+        voice = clearvoice.ClearVoice(task="speech_enhancement", model_names=[model])
+        enhanced = voice(batch, False)
 
     dest = src.with_name(f"{src.stem}.enhanced.wav")
     sf.write(dest, enhanced[0, :], ENHANCE_SAMPLE_RATE)

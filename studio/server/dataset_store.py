@@ -38,6 +38,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .util import ascii_filename
+
 TARGET_SAMPLE_RATE = 24000
 MAX_TRANSCRIPT_CHARS = 2000
 UTTERANCE_STATUSES = ("recorded", "accepted", "rejected")
@@ -129,11 +131,6 @@ def to_24k_mono_wav(audio_bytes: bytes, suffix: str) -> bytes:
         return dst.read_bytes()
 
 
-def ascii_filename(name: str, suffix: str) -> str:
-    # Header values must be ASCII; non-ASCII dataset names get an ASCII fallback.
-    ascii_name = "".join(c for c in name if c.isascii() and (c.isalnum() or c in " -_")).strip()
-    return (ascii_name or "dataset") + suffix
-
 
 def _assert_safe_zip(zf: zipfile.ZipFile) -> None:
     """Zip-slip guard: reject archives whose entry names could escape the dataset dir."""
@@ -147,7 +144,7 @@ class DatasetStore:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # reentrant: _remember_speaker locks internally
 
     # -- paths ---------------------------------------------------------------
 
@@ -184,11 +181,15 @@ class DatasetStore:
         if not path.exists():
             return []
         utterances = []
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line_no, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not text.strip():
+                continue
             try:
-                utterances.append(Utterance.model_validate_json(line))
-            except ValueError:
-                continue  # skip corrupt/partial lines rather than breaking the listing
+                utterances.append(Utterance.model_validate_json(text))
+            except ValueError as exc:
+                # Fail loudly: silently skipping a line means the next
+                # _save_utterances permanently erases it (audio orphaned).
+                raise ValueError(f"{path}:{line_no}: corrupt utterance JSON ({exc})") from exc
         return utterances
 
     def _save_dataset(self, dataset: Dataset) -> None:
@@ -204,10 +205,14 @@ class DatasetStore:
             "".join(u.model_dump_json() + "\n" for u in utterances), encoding="utf-8")
         tmp.replace(path)
 
-    def _remember_speaker(self, dataset: Dataset, speaker: str) -> None:
-        if speaker not in dataset.speakers:
-            dataset.speakers.append(speaker)
-            self._save_dataset(dataset)
+    def _remember_speaker(self, dataset_id: str, speaker: str) -> None:
+        # Read-modify-write under the store lock: concurrent adds of new
+        # speakers would otherwise race around it (last-writer-wins drops one).
+        with self._lock:
+            dataset = self._read_dataset(dataset_id)
+            if speaker not in dataset.speakers:
+                dataset.speakers.append(speaker)
+                self._save_dataset(dataset)
 
     def _new_utt_id(self, dataset_id: str, taken: set[str]) -> str:
         prefix = self._utt_prefix(dataset_id)
@@ -276,7 +281,7 @@ class DatasetStore:
             )
             (self._dir(dataset_id) / utterance.wav).write_bytes(wav_bytes)
             self._save_utterances(dataset_id, [*utterances, utterance])
-        self._remember_speaker(self._read_dataset(dataset_id), speaker)
+        self._remember_speaker(dataset_id, speaker)
         return utterance
 
     def update_utterance(self, dataset_id: str, utt_id: str, *,
@@ -302,7 +307,7 @@ class DatasetStore:
                 if status is not None:
                     utterance.status = status
                 self._save_utterances(dataset_id, utterances)
-                self._remember_speaker(dataset, utterance.speaker)
+                self._remember_speaker(dataset_id, utterance.speaker)
                 return utterance
             raise KeyError(utt_id)
 
@@ -339,9 +344,20 @@ class DatasetStore:
             for utterance in utterances:
                 if utterance.utt_id != utt_id:
                     continue
+                if utterance.enhanced_by is not None:
+                    # Re-enhancing would overwrite the current audio AND the
+                    # provenance chain (enhanced_from == wav); refuse instead.
+                    raise ValueError(
+                        f"{utt_id} is already enhanced by {utterance.enhanced_by}"
+                    )
                 new_rel = f"audio/{utt_id}.enhanced.wav"
-                (self._dir(dataset_id) / new_rel).write_bytes(enhanced_path.read_bytes())
-                enhanced_path.unlink(missing_ok=True)
+                dest = self._dir(dataset_id) / new_rel
+                if enhanced_path.resolve() != dest.resolve():
+                    # enhance() writes beside the input — for a never-enhanced
+                    # clip that IS dest; copying onto itself then unlinking
+                    # would delete the only copy.
+                    dest.write_bytes(enhanced_path.read_bytes())
+                    enhanced_path.unlink(missing_ok=True)
                 utterance.enhanced_from = utterance.wav
                 utterance.enhanced_by = model_name
                 utterance.wav = new_rel
@@ -431,4 +447,4 @@ class DatasetStore:
             zf.writestr(
                 "transcripts.jsonl",
                 "".join(json.dumps(line, ensure_ascii=False) + "\n" for line in lines))
-        return buffer.getvalue(), ascii_filename(dataset.name, "_accepted.zip")
+        return buffer.getvalue(), ascii_filename(dataset.name, "_accepted.zip", "dataset")

@@ -260,3 +260,78 @@ def test_export_empty_dataset_rejected(tmp_path):
     client = make_client(tmp_path)
     ds = make_dataset(client)
     assert client.get(f"/api/datasets/{ds['id']}/export").status_code == 400
+
+
+# -- enhance -> adopt_enhanced round trip (review finding: adopt_enhanced
+#    used to copy onto its own destination, then unlink it) -------------------
+
+
+def _uploaded_utterance(client: TestClient, dataset_id: str) -> str:
+    resp = client.post(
+        f"/api/datasets/{dataset_id}/utterances",
+        files={"file": ("clip.wav", wav_bytes(), "audio/wav")},
+        data={"transcript": "Ghi âm thử.", "speaker": "nampq"},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["utt_id"]
+
+
+def test_enhance_route_swaps_audio_and_keeps_original(tmp_path, monkeypatch):
+    client = make_client(tmp_path)
+    ds_id = client.post("/api/datasets", json={"name": "Enh"}).json()["id"]
+    utt_id = _uploaded_utterance(client, ds_id)
+    wav_path = datasets_api.store.wav_path(ds_id, utt_id)
+    original_bytes = wav_path.read_bytes()
+
+    # Fake the heavy wrapper with the real one's contract: writes
+    # <stem>.enhanced.wav beside the input and returns that path.
+    def fake_enhance(path, model="FRCRN_SE_16K"):
+        dest = Path(path).with_name(f"{Path(path).stem}.enhanced.wav")
+        dest.write_bytes(wav_bytes(duration_s=0.6))
+        return dest
+
+    monkeypatch.setattr(datasets_api, "enhance", fake_enhance)
+
+    resp = client.post(f"/api/datasets/{ds_id}/utterances/{utt_id}/enhance")
+    assert resp.status_code == 200, resp.text
+    doc = resp.json()
+    assert doc["wav"] == f"audio/{utt_id}.enhanced.wav"
+    assert doc["enhanced_by"] == "FRCRN_SE_16K"
+    assert doc["enhanced_from"] == f"audio/{utt_id}.wav"
+    # Both files survive: current audio + original for provenance.
+    assert (tmp_path / "datasets" / ds_id / doc["wav"]).exists()
+    assert (tmp_path / "datasets" / ds_id / doc["enhanced_from"]).read_bytes() == original_bytes
+
+
+def test_enhance_route_rejects_second_enhance(tmp_path, monkeypatch):
+    client = make_client(tmp_path)
+    ds_id = client.post("/api/datasets", json={"name": "Enh2"}).json()["id"]
+    utt_id = _uploaded_utterance(client, ds_id)
+
+    def fake_enhance(path, model="FRCRN_SE_16K"):
+        dest = Path(path).with_name(f"{Path(path).stem}.enhanced.wav")
+        dest.write_bytes(wav_bytes(duration_s=0.6))
+        return dest
+
+    monkeypatch.setattr(datasets_api, "enhance", fake_enhance)
+    assert client.post(f"/api/datasets/{ds_id}/utterances/{utt_id}/enhance").status_code == 200
+    resp = client.post(f"/api/datasets/{ds_id}/utterances/{utt_id}/enhance")
+    assert resp.status_code == 400
+    assert "already enhanced" in resp.json()["detail"]
+
+
+def test_load_utterances_fails_loudly_on_corrupt_line(tmp_path):
+    store = DatasetStore(tmp_path / "ds")
+    dataset = store.create("Corrupt")
+    store.add_utterance(
+        dataset.id, wav_bytes(), "a.wav", transcript="Câu một.", speaker="nampq"
+    )
+    utterances_path = tmp_path / "ds" / dataset.id / "utterances.jsonl"
+    lines = utterances_path.read_text(encoding="utf-8").splitlines()
+    lines.insert(0, '{"utt_id": "broken"')  # truncated JSON
+    utterances_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Silent skipping would let the next save erase the corrupt line's
+    # neighbours' audit trail; the store refuses instead.
+    with pytest.raises(ValueError, match="corrupt utterance JSON"):
+        store.list()

@@ -11,11 +11,19 @@ from __future__ import annotations
 import importlib
 import shutil
 import sys
+import threading
 from pathlib import Path
 
 
 class ProcessingUnavailable(RuntimeError):
     """Raised when a processing wrapper runs without its dependencies."""
+
+
+# DNSMOS scores via CWD-relative ONNX paths and ClearVoice resolves its
+# checkpoints CWD-relative too — both mutate/read process-global CWD. Sync
+# FastAPI routes share one CWD across threadpool threads, so every chdir
+# window takes this lock (QC vs QC and QC vs enhance alike).
+CWD_LOCK = threading.Lock()
 
 
 def repo_root() -> Path:

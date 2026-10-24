@@ -104,7 +104,14 @@ class VieneuEngine(TtsEngine):
         if voice_id.startswith(REF_VOICE_PREFIX):
             if self.ref_audio_resolver is None:
                 raise ValueError("no resolver configured for ref voices")
-            ref_path = self.ref_audio_resolver(voice_id[len(REF_VOICE_PREFIX):])
+            utt_id = voice_id[len(REF_VOICE_PREFIX):]
+            ref_path = self.ref_audio_resolver(utt_id)
+            if ref_path is None:
+                # str(None) would reach the SDK as the path "None" and fail
+                # deep inside infer(); fail here with the offending voice id.
+                raise ValueError(
+                    f"ref voice {voice_id!r}: no accepted recording found"
+                )
             return {"ref_audio": str(ref_path)}
         return {"voice": voice_id}
 

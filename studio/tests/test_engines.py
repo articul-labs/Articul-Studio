@@ -172,3 +172,13 @@ def test_vieneu_ref_voice_without_resolver_raises_value_error():
     engine = VieneuEngine()
     with pytest.raises(ValueError, match="no resolver configured"):
         engine.synthesize("xin chào", "ref:studs01_ab12cd34", {})
+
+
+def test_ref_voice_with_unknown_utterance_fails_fast(monkeypatch):
+    """Resolver returning None (unknown/rejected utt) must raise naming the
+    voice id, never hand the SDK the string "None" as a path (review P2)."""
+    from server.engines.vieneu import VieneuEngine
+
+    engine = VieneuEngine(ref_audio_resolver=lambda utt_id: None)
+    with pytest.raises(ValueError, match="ref:nope_40404040"):
+        engine.synthesize("xin chào", "ref:nope_40404040", {})

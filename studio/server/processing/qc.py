@@ -11,6 +11,7 @@ from typing import Union
 import soundfile as sf
 
 from ._compat import (
+    CWD_LOCK,
     ProcessingUnavailable,
     ensure_repo_paths,
     reason,
@@ -40,7 +41,7 @@ def quick_score(wav_path: PathLike) -> dict:
     # the vendored speechscore dir. This mutates process-global state but is
     # restored after; acceptable for the studio's synchronous V1 routes.
     prev_cwd = os.getcwd()
-    try:
+    with CWD_LOCK:
         os.chdir(repo_root() / "speechscore")
         try:
             # SpeechScore(["dnsmos"]) -> ScoresList; calling it returns
@@ -51,8 +52,8 @@ def quick_score(wav_path: PathLike) -> dict:
             # basis.scoring imports museval/resampy at call time, after the
             # availability probe has already passed.
             raise ProcessingUnavailable(f"DNSMOS scoring deps missing ({exc})") from exc
-    finally:
-        os.chdir(prev_cwd)
+        finally:
+            os.chdir(prev_cwd)
 
     dnsmos = results["DNSMOS"]
     return {
