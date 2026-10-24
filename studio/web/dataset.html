@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Articul — Bộ dữ liệu</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/dataset.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Articul<span>Studio</span></div>
+    <a class="back-link" href="/">← Studio đọc</a>
+    <div class="topbar-actions">
+      <select id="dataset-picker" aria-label="Chọn bộ dữ liệu"></select>
+      <button id="btn-new-dataset" class="ghost">+ Bộ mới</button>
+      <button id="btn-import" class="ghost">⬆ Nhập zip</button>
+      <button id="btn-export" class="primary">⬇ Xuất zip</button>
+      <input id="import-file" type="file" accept=".zip" hidden />
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Chế độ làm việc">
+    <button id="tab-record" class="tab active" aria-selected="true">Ghi âm</button>
+    <button id="tab-review" class="tab" aria-selected="false">Duyệt</button>
+  </nav>
+
+  <main class="view-wrap">
+    <p id="page-error" class="error" hidden></p>
+
+    <section id="view-record">
+      <div class="pane-head">
+        <h2>Ghi âm</h2>
+        <span id="dataset-stats" class="stats"></span>
+      </div>
+      <div class="record-toolbar">
+        <label class="field">
+          <span>Giọng đọc</span>
+          <select id="speaker-picker"></select>
+        </label>
+        <input id="new-speaker" placeholder="Tên giọng đọc mới…" aria-label="Tên giọng đọc mới" />
+        <button id="btn-add-speaker" class="ghost">+ Thêm giọng</button>
+      </div>
+      <div class="card">
+        <label class="field">
+          <span>Dán danh sách câu cần ghi — mỗi câu một dòng</span>
+          <textarea id="prompt-bulk" rows="4" placeholder="Xin chào, rất vui được gặp bạn.&#10;Thời tiết hôm nay thật đẹp."></textarea>
+        </label>
+        <button id="btn-add-prompts" class="primary">Thêm các câu</button>
+      </div>
+      <div id="pending-list"></div>
+    </section>
+
+    <section id="view-review" hidden>
+      <div class="pane-head">
+        <h2>Duyệt</h2>
+        <select id="review-status" aria-label="Lọc theo trạng thái">
+          <option value="recorded">Chờ duyệt</option>
+          <option value="accepted">Đã chấp nhận</option>
+          <option value="rejected">Đã loại bỏ</option>
+        </select>
+      </div>
+      <p class="hint">Chọn một dòng rồi dùng phím tắt: <b>Space</b> phát/dừng · <b>A</b> chấp nhận · <b>R</b> loại bỏ</p>
+      <div id="review-list"></div>
+    </section>
+  </main>
+
+  <template id="pending-tpl">
+    <article class="pending-card">
+      <div class="pending-head">
+        <span class="pending-index"></span>
+        <p class="pending-text"></p>
+        <span class="pending-state"></span>
+      </div>
+      <div class="pending-actions">
+        <button class="pending-record">● Ghi âm</button>
+        <audio class="pending-audio" controls preload="none"></audio>
+        <button class="pending-retake" hidden>Ghi lại</button>
+        <button class="pending-save primary" hidden>Lưu</button>
+      </div>
+      <p class="pending-error error" hidden></p>
+    </article>
+  </template>
+
+  <template id="review-row-tpl">
+    <article class="review-row" tabindex="0">
+      <div class="row-top">
+        <span class="row-index"></span>
+        <audio class="row-audio" controls preload="none"></audio>
+        <span class="status-badge"></span>
+      </div>
+      <div class="row-edit">
+        <textarea class="row-transcript" rows="2" aria-label="Nội dung"></textarea>
+        <select class="row-speaker" aria-label="Giọng đọc"></select>
+        <button class="row-accept">Chấp nhận</button>
+        <button class="row-reject danger">Loại bỏ</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="/dataset.js"></script>
+</body>
+</html>

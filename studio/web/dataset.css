@@ -1,0 +1,120 @@
+/* Dataset studio page — reuses the :root palette and shared controls from style.css. */
+
+.back-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.back-link:hover { color: var(--accent); }
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.9rem 1.2rem 0;
+}
+.tab {
+  border-radius: 8px 8px 0 0;
+  border-bottom-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+.tab.active {
+  background: var(--panel);
+  border-bottom-color: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.view-wrap { max-width: 900px; margin: 0 auto; padding: 1rem 1.2rem 2rem; }
+
+.error { color: var(--danger); font-size: 0.88rem; margin: 0.3rem 0; }
+.hint { color: var(--muted); font-size: 0.82rem; }
+.stats { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+textarea {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.6rem;
+  font: inherit;
+  resize: vertical;
+}
+textarea:focus { outline: none; border-color: var(--accent); }
+
+.record-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.record-toolbar .field { margin-bottom: 0; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+}
+.card textarea { width: 100%; margin-top: 0.3rem; }
+.card button { margin-top: 0.6rem; }
+
+audio { width: 100%; max-height: 2.4rem; }
+audio:not([src]) { display: none; }
+
+.pending-card,
+.review-row {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.7rem;
+}
+.review-row:focus,
+.review-row:focus-within { border-color: var(--accent); outline: none; }
+
+.pending-head { display: flex; align-items: baseline; gap: 0.6rem; }
+.pending-index,
+.row-index { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.6rem; }
+.pending-text { margin: 0; flex: 1; }
+.pending-state { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+.pending-card[data-status="recording"] .pending-state { color: var(--danger); }
+.pending-card[data-status="saved"] .pending-state { color: var(--accent-2); }
+
+.pending-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.pending-actions audio { flex: 1; }
+
+.row-top { display: flex; align-items: center; gap: 0.6rem; }
+.row-top audio { flex: 1; }
+
+.row-edit {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.row-transcript { flex: 1; }
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.status-badge[data-status="recorded"] { color: var(--accent); border-color: var(--accent); }
+.status-badge[data-status="accepted"] { color: var(--accent-2); border-color: var(--accent-2); }
+.status-badge[data-status="rejected"] { color: var(--danger); border-color: var(--danger); }
+
+button.danger { color: var(--danger); }
+button.danger:hover { border-color: var(--danger); }

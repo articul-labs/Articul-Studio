@@ -18,10 +18,31 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engines.registry import get_engine, get_engines
+from .engines.vieneu import VieneuEngine
+from .datasets_api import router as datasets_router
+from .datasets_api import store as dataset_store
 from .project_store import Project, ProjectStore, Section
 
 app = FastAPI(title="Articul Studio", version="0.1.0")
 store = ProjectStore(Path(__file__).resolve().parent.parent / "data" / "projects")
+app.include_router(datasets_router)
+
+# Serve dataset audio for review playback. Local tool: no auth by design.
+app.mount("/data", StaticFiles(directory=Path(__file__).resolve().parent.parent / "data"), name="data")
+
+
+def _resolve_ref_audio(utt_id: str) -> str | None:
+    """VieNeu zero-shot cloning: dataset recordings double as voice references.
+    Only accepted utterances qualify — a rejected clip is a bad voice print."""
+    found = dataset_store.find_utterance(utt_id.removeprefix("ref:"))
+    if found is None or found[1].status != "accepted":
+        return None
+    return str(found[2])
+
+
+for _engine in get_engines():
+    if isinstance(_engine, VieneuEngine):
+        _engine.ref_audio_resolver = _resolve_ref_audio
 
 # Header values must be ASCII; non-ASCII project titles get an ASCII fallback name.
 def _ascii_filename(title: str) -> str:

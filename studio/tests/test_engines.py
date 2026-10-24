@@ -1,3 +1,5 @@
+import pytest
+
 from server.engines.base import ParamSpec
 from server.engines.registry import get_engine, get_engines
 from server.engines.stub import PlaceholderEngine, count_syllables
@@ -75,3 +77,98 @@ def test_articul_normalizer_falls_back_to_identity_without_import(monkeypatch):
     assert engine.normalize_text("50%") == "50%"
     if saved is not None:
         sys.modules["articul.frontend"] = saved
+
+
+def test_vieneu_hidden_without_deps(monkeypatch):
+    import shutil
+    import sys
+
+    monkeypatch.setitem(sys.modules, "vieneu", None)  # forces ImportError inside
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert get_engine("vieneu") is None
+
+
+def test_vieneu_unavailable_reason_mentions_espeak_ng(monkeypatch):
+    import shutil
+
+    from server.engines.vieneu import unavailable_reason
+
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert "espeak-ng" in unavailable_reason()
+
+
+def test_vieneu_registered_and_synthesizes_through_fake_sdk(monkeypatch):
+    import shutil
+    import sys
+    import types
+
+    import numpy as np
+
+    captured = {}
+
+    class FakeVieneu:
+        def __init__(self, **kwargs):
+            captured["init_kwargs"] = kwargs
+
+        def infer(self, text, **kwargs):
+            captured["infer_call"] = (text, kwargs)
+            return 48000, np.linspace(-0.1, 0.1, 4800, dtype=np.float32)
+
+    fake_module = types.ModuleType("vieneu")
+    fake_module.Vieneu = FakeVieneu
+    monkeypatch.setitem(sys.modules, "vieneu", fake_module)
+    monkeypatch.setattr(
+        shutil, "which", lambda name: "/usr/bin/espeak-ng" if name == "espeak-ng" else None
+    )
+
+    engine = get_engine("vieneu")
+    assert engine is not None
+
+    result = engine.synthesize("xin chào", "Mai Anh", {})
+    assert result.wav_bytes[:4] == b"RIFF"
+    assert result.sample_rate == 48000
+    assert result.duration_s == 0.1
+
+    text, kwargs = captured["infer_call"]
+    assert text == "xin chào"
+    assert kwargs["voice"] == "Mai Anh"
+    assert kwargs["denoise"] is True  # engine default
+
+
+def test_vieneu_ref_voice_uses_resolver(monkeypatch):
+    import shutil
+    import sys
+    import types
+
+    import numpy as np
+
+    fake_module = types.ModuleType("vieneu")
+
+    captured = {}
+
+    class FakeVieneu:
+        def infer(self, text, **kwargs):
+            captured["infer_call"] = (text, kwargs)
+            return 48000, np.zeros(4800, dtype=np.float32)
+
+    fake_module.Vieneu = FakeVieneu
+    monkeypatch.setitem(sys.modules, "vieneu", fake_module)
+    monkeypatch.setattr(
+        shutil, "which", lambda name: "/usr/bin/espeak-ng" if name == "espeak-ng" else None
+    )
+
+    from server.engines.vieneu import VieneuEngine
+
+    engine = VieneuEngine(ref_audio_resolver=lambda utt_id: f"/data/{utt_id}.wav")
+    engine.synthesize("xin chào", "ref:studs01_ab12cd34", {})
+    _, kwargs = captured["infer_call"]
+    assert kwargs["ref_audio"] == "/data/studs01_ab12cd34.wav"
+    assert "voice" not in kwargs
+
+
+def test_vieneu_ref_voice_without_resolver_raises_value_error():
+    from server.engines.vieneu import VieneuEngine
+
+    engine = VieneuEngine()
+    with pytest.raises(ValueError, match="no resolver configured"):
+        engine.synthesize("xin chào", "ref:studs01_ab12cd34", {})
