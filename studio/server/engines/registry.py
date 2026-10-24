@@ -1,10 +1,12 @@
-"""Engine discovery: the placeholder always runs; Articul joins when configured."""
+"""Engine discovery: the placeholder always runs; the rest join when their
+dependencies appear (Articul: configured model dir; Vieneu: SDK + espeak-ng)."""
 
 from __future__ import annotations
 
 from .articul import ArticulEngine
 from .base import TtsEngine
 from .stub import PlaceholderEngine
+from .vieneu import VieneuEngine
 
 _ENGINES: list[TtsEngine] = []
 
@@ -14,6 +16,8 @@ def get_engines() -> list[TtsEngine]:
     available: list[TtsEngine] = [PlaceholderEngine()]
     if ArticulEngine.available():
         available.append(ArticulEngine())
+    if VieneuEngine.available():
+        available.append(VieneuEngine())
     if [e.id for e in available] != [e.id for e in _ENGINES]:
         _ENGINES.clear()
         _ENGINES.extend(available)

@@ -9,9 +9,13 @@ dependencies = [
     "numpy>=1.26",
     "soundfile>=0.12",
     "pydantic>=2.7",
+    "python-multipart>=0.0.20",
 ]
 
 [dependency-groups]
+vieneu = [
+    "vieneu>=0.1",
+]
 dev = [
     "pytest>=8.0",
     "httpx>=0.27",

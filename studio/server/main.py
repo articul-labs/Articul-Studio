@@ -18,15 +18,32 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .engines.registry import get_engine, get_engines
+from .engines.vieneu import VieneuEngine
+from .datasets_api import router as datasets_router
+from .datasets_api import store as dataset_store
 from .project_store import Project, ProjectStore, Section
+from .util import ascii_filename
 
 app = FastAPI(title="Articul Studio", version="0.1.0")
 store = ProjectStore(Path(__file__).resolve().parent.parent / "data" / "projects")
+app.include_router(datasets_router)
 
-# Header values must be ASCII; non-ASCII project titles get an ASCII fallback name.
-def _ascii_filename(title: str) -> str:
-    ascii_name = "".join(c for c in title if c.isascii() and (c.isalnum() or c in " -_")).strip()
-    return (ascii_name or "project") + ".wav"
+# Serve dataset audio for review playback. Local tool: no auth by design.
+app.mount("/data", StaticFiles(directory=Path(__file__).resolve().parent.parent / "data"), name="data")
+
+
+def _resolve_ref_audio(utt_id: str) -> str | None:
+    """VieNeu zero-shot cloning: dataset recordings double as voice references.
+    Only accepted utterances qualify — a rejected clip is a bad voice print."""
+    found = dataset_store.find_utterance(utt_id.removeprefix("ref:"))
+    if found is None or found[1].status != "accepted":
+        return None
+    return str(found[2])
+
+
+for _engine in get_engines():
+    if isinstance(_engine, VieneuEngine):
+        _engine.ref_audio_resolver = _resolve_ref_audio
 
 # Gap inserted between sections when playing/exporting a whole project.
 SECTION_GAP_S = 0.35
@@ -88,10 +105,18 @@ def create_project(body: dict) -> Project:
     if engine is None:
         raise HTTPException(404, "unknown engine")
     settings = engine.normalize_settings(body.get("settings"))
+    default_voice = engine.voices[0].id if engine.voices else None
+    if not body.get("voice_id") and default_voice is None:
+        # Voiceless engines (vieneu registers voices = [] until presets are
+        # known) need an explicit voice_id; voices[0] would IndexError.
+        raise HTTPException(
+            400,
+            f"engine '{engine.id}' exposes no default voice — pass voice_id",
+        )
     return store.create(
         title=str(body.get("title", "Dự án mới"))[:200],
         engine_id=engine.id,
-        voice_id=str(body.get("voice_id", engine.voices[0].id)),
+        voice_id=str(body.get("voice_id", default_voice)),
         settings=settings,
     )
 
@@ -193,7 +218,10 @@ def export_project(project_id: str) -> Response:
     return Response(
         content=buffer.getvalue(),
         media_type="audio/wav",
-        headers={"Content-Disposition": f'attachment; filename="{_ascii_filename(project.title)}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="'
+            f'{ascii_filename(project.title, ".wav", "project")}"'
+        },
     )
 
 

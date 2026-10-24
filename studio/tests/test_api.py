@@ -77,3 +77,16 @@ def test_export_concatenates_sections(tmp_path):
 def test_bad_project_id_rejected(tmp_path):
     client = client_with_store(tmp_path)
     assert client.get("/api/projects/../etc").status_code in (400, 404, 422)
+
+
+def test_create_project_with_voiceless_engine_requires_voice_id(tmp_path, monkeypatch):
+    """vieneu registers voices = [] until the SDK ships known presets; without
+    a body voice_id, voices[0] used to IndexError -> 500 (review P3)."""
+    import server.main as main
+    from server.engines.vieneu import VieneuEngine
+
+    monkeypatch.setattr(main, "get_engine", lambda engine_id: VieneuEngine())
+    client = client_with_store(tmp_path)
+    resp = client.post("/api/projects", json={"engine_id": "vieneu"})
+    assert resp.status_code == 400
+    assert "voice_id" in resp.json()["detail"]
